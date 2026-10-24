@@ -14,7 +14,8 @@ import {
 import AppLayout from "../../layouts/AppLayout";
 import { useAuth } from "../../context/AuthContext";
 
-const API_URL = "http://localhost:5000/api/mock-interviews";
+const API_URL =
+  "https://preppilot-api-ur97.onrender.com/api/mock-interviews";
 
 const apiRequest = async (endpoint, token) => {
   try {

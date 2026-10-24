@@ -21,7 +21,8 @@ import {
   ChevronRight,
 } from "lucide-react";
 
-const API_URL = "http://localhost:5000/api/profile";
+const API_URL =
+  "https://preppilot-api-ur97.onrender.com/api/profile";
 
 const Profile = () => {
   const [profile, setProfile] = useState({
@@ -122,7 +123,7 @@ const Profile = () => {
         }
 
         const response = await fetch(
-          "http://localhost:5000/api/profile/stats",
+          "https://preppilot-api-ur97.onrender.com/api/profile/stats",
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -162,7 +163,7 @@ const Profile = () => {
         }
 
         const response = await fetch(
-          "http://localhost:5000/api/profile/preparations",
+          "https://preppilot-api-ur97.onrender.com/api/profile/preparations",
           {
             headers: {
               Authorization: `Bearer ${token}`,

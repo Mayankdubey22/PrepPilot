@@ -1,4 +1,5 @@
-const API_URL = "http://localhost:5000/api/mock-interviews";
+const API_URL =
+  "https://preppilot-api-ur97.onrender.com/api/mock-interviews";
 
 const apiRequest = async (endpoint, token, options = {}) => {
   try {
