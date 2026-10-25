@@ -1,5 +1,7 @@
 
-const API_BASE_URL = "https://preppilot-api-ur97.onrender.com/api";
+const API_BASE_URL =
+  import.meta.env.VITE_API_URL ||
+  "http://localhost:5000/api";
 
 // Create a new preparation
 export const createPreparation = async (preparationData, token) => {

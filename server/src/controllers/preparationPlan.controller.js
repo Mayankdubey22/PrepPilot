@@ -149,7 +149,15 @@ const generateMyPreparationPlan = async (req, res) => {
       }
     }
 
-    console.error("Generate preparation plan error:", error);
+    
+console.error("Generate preparation plan error:", {
+  message: error.message,
+  name: error.name,
+  code: error.code,
+  status: error.status,
+  stack: error.stack,
+});
+
 
     return res.status(500).json({
       success: false,
