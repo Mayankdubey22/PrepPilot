@@ -1,5 +1,9 @@
 
-const { ai, GEMINI_MODEL } = require("../config/gemini.config");
+const {
+  ai,
+  GEMINI_MODEL,
+  GEMINI_FALLBACK_MODEL,
+} = require("../config/gemini.config");
 
 
 const delay = (milliseconds) =>
@@ -29,6 +33,32 @@ const generateWithRetry = async (request, maxAttempts = 3) => {
 
       await delay(waitTime);
     }
+  }
+};
+
+const generateWithFallback = async (request) => {
+  try {
+    return await generateWithRetry({
+      ...request,
+      model: GEMINI_MODEL,
+    });
+  } catch (primaryError) {
+    if (
+      !GEMINI_FALLBACK_MODEL ||
+      GEMINI_FALLBACK_MODEL === GEMINI_MODEL
+    ) {
+      throw primaryError;
+    }
+
+    console.error(
+      `Primary Gemini model failed. Trying fallback: ${GEMINI_FALLBACK_MODEL}`,
+      primaryError.message
+    );
+
+    return await generateWithRetry({
+      ...request,
+      model: GEMINI_FALLBACK_MODEL,
+    });
   }
 };
 
@@ -146,7 +176,7 @@ REQUIREMENTS
     required: ["title", "overview", "days"],
   };
 
-  const response = await generateWithRetry({
+const response = await generateWithFallback({
     model: GEMINI_MODEL,
     contents: prompt,
     config: {
