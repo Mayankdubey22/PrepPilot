@@ -17,7 +17,7 @@ import { Link } from "react-router";
 import AppLayout from "../../layouts/AppLayout";
 import Card from "../../components/ui/Card";
 import Button from "../../components/ui/Button";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../context/useAuth";
 import { getMyPreparations } from "../../services/preparation.service";
 
 const PreparationHistory = () => {
@@ -37,7 +37,7 @@ const PreparationHistory = () => {
     setError("");
 
     try {
-      const result = await getMyPreparations(token);
+      const result = await getMyPreparations();
 
       if (!result.success) {
         setError(
@@ -55,7 +55,11 @@ const PreparationHistory = () => {
   }, [token]);
 
   useEffect(() => {
-    loadPreparations();
+    const timer = window.setTimeout(() => {
+      loadPreparations();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, [loadPreparations]);
 
   return (

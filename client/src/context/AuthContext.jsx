@@ -1,46 +1,64 @@
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-} from "react";
-
-const AuthContext = createContext(null);
+import { useEffect, useState } from "react";
+import { getCurrentUser, signoutUser } from "../services/auth.service";
+import { AuthContext } from "./authContext";
 
 export const AuthProvider = ({ children }) => {
-  const [token, setToken] = useState(() =>
-    localStorage.getItem("prepPilot-token")
-  );
+  const [token, setToken] = useState(null);
 
   const [user, setUser] = useState(() => {
     const savedUser = localStorage.getItem("prepPilot-user");
 
-    return savedUser ? JSON.parse(savedUser) : null;
+    try {
+      return savedUser ? JSON.parse(savedUser) : null;
+    } catch {
+      localStorage.removeItem("prepPilot-user");
+      return null;
+    }
   });
 
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    setIsLoading(false);
+    let active = true;
+    localStorage.removeItem("prepPilot-token");
+    localStorage.removeItem("token");
+
+    getCurrentUser().then((result) => {
+      if (!active) return;
+
+      if (result.success && result.data?.user) {
+        setToken(true);
+        setUser(result.data.user);
+        localStorage.setItem(
+          "prepPilot-user",
+          JSON.stringify(result.data.user)
+        );
+      } else {
+        setToken(null);
+        setUser(null);
+        localStorage.removeItem("prepPilot-user");
+      }
+    }).finally(() => {
+      if (active) setIsLoading(false);
+    });
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   const login = (loginData) => {
-    localStorage.setItem(
-      "prepPilot-token",
-      loginData.token
-    );
-
     localStorage.setItem(
       "prepPilot-user",
       JSON.stringify(loginData.user)
     );
 
-    setToken(loginData.token);
+    setToken(true);
     setUser(loginData.user);
   };
 
   const logout = () => {
-    localStorage.removeItem("prepPilot-token");
+    signoutUser();
     localStorage.removeItem("prepPilot-user");
 
     setToken(null);
@@ -63,16 +81,4 @@ export const AuthProvider = ({ children }) => {
       {children}
     </AuthContext.Provider>
   );
-};
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-
-  if (!context) {
-    throw new Error(
-      "useAuth must be used inside AuthProvider"
-    );
-  }
-
-  return context;
 };

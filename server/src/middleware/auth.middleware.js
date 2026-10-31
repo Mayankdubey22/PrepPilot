@@ -1,24 +1,41 @@
 
 const jwt = require("jsonwebtoken");
+const { ALLOWED_ORIGINS } = require("../config/cors.config");
+
+const SESSION_COOKIE = "prepPilot-session";
+
+const getCookie = (req, name) => {
+  const cookies = req.headers.cookie || "";
+  const entry = cookies.split(";").map((part) => part.trim())
+    .find((part) => part.startsWith(`${name}=`));
+
+  return entry ? decodeURIComponent(entry.slice(name.length + 1)) : "";
+};
 
 const protect = (req, res, next) => {
   try {
-    const authHeader = req.headers.authorization;
-
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return res.status(401).json({
-        success: false,
-        message: "Authentication token missing.",
-      });
-    }
-
-    const token = authHeader.slice(7).trim();
+    const cookieToken = getCookie(req, SESSION_COOKIE);
+    const token = cookieToken;
 
     if (!token) {
       return res.status(401).json({
         success: false,
         message: "Authentication token missing.",
       });
+    }
+
+    if (!["GET", "HEAD", "OPTIONS"].includes(req.method)) {
+      const origin = req.get("origin");
+
+      if (
+        !ALLOWED_ORIGINS.includes(origin) ||
+        req.get("x-requested-with") !== "XMLHttpRequest"
+      ) {
+        return res.status(403).json({
+          success: false,
+          message: "Request origin could not be verified.",
+        });
+      }
     }
 
     if (!process.env.JWT_SECRET) {
@@ -30,7 +47,9 @@ const protect = (req, res, next) => {
       });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET, {
+      algorithms: ["HS256"],
+    });
 
     const userId = decoded.userId || decoded.id;
 
@@ -69,3 +88,4 @@ const protect = (req, res, next) => {
 };
 
 module.exports = protect;
+module.exports.SESSION_COOKIE = SESSION_COOKIE;

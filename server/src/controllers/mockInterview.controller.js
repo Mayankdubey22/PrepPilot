@@ -16,6 +16,9 @@ const {
 const {
   evaluateInterviewAnswer,
 } = require("../services/interviewEvaluation.service");
+const {
+  enqueueInterviewEvaluation,
+} = require("../services/interviewEvaluationQueue.service");
 
 const DEFAULT_DURATION_SECONDS = 30 * 60;
 const QUESTION_LIMIT = 12;
@@ -212,7 +215,7 @@ const prepareMockInterviewQuestions = async (req, res) => {
         success: true,
         status: "ready",
         message: "Mock test questions are ready.",
-        questionSet,
+        questionSet: sanitizeQuestionSet(questionSet),
       });
     }
 
@@ -433,17 +436,43 @@ const startMockInterview = async (req, res) => {
       startedAt.getTime() + DEFAULT_DURATION_SECONDS * 1000
     );
 
-    const interview = await MockInterview.create({
-      user: req.userId,
-      preparation: preparation._id,
-      milestone,
-      questions,
-      status: "active",
-      evaluationStatus: "not_started",
-      durationSeconds: DEFAULT_DURATION_SECONDS,
-      startedAt,
-      endsAt,
-    });
+    let interview;
+
+    try {
+      interview = await MockInterview.create({
+        user: req.userId,
+        preparation: preparation._id,
+        milestone,
+        attemptKey: `${req.userId}:${preparation._id}:${milestone}`,
+        questions,
+        status: "active",
+        evaluationStatus: "not_started",
+        durationSeconds: DEFAULT_DURATION_SECONDS,
+        startedAt,
+        endsAt,
+      });
+    } catch (error) {
+      // The unique attempt key closes the race between concurrent start requests.
+      if (error.code === 11000) {
+        const existingAttempt = await MockInterview.findOne({
+          user: req.userId,
+          preparation: preparation._id,
+          milestone,
+        }).sort({ createdAt: -1 });
+
+        if (existingAttempt) {
+          return res.status(409).json({
+            success: false,
+            code: "MILESTONE_ATTEMPT_USED",
+            message: `The Mock Test for the ${milestone}% milestone has already been used. Open its saved result from Preparation.`,
+            interview: sanitizeInterview(existingAttempt),
+            milestone,
+          });
+        }
+      }
+
+      throw error;
+    }
 
     return res.status(201).json({
       success: true,
@@ -710,6 +739,11 @@ const evaluateSubmittedInterview = async (interviewId) => {
     let failedQuestionCount = 0;
 
     for (const question of answeredQuestions) {
+      if (question.evaluation?.score !== null &&
+        question.evaluation?.score !== undefined) {
+        continue;
+      }
+
       try {
         if (question.type === "MCQ") {
           const selectedIndex = Number(question.userAnswer);
@@ -786,16 +820,7 @@ const evaluateSubmittedInterview = async (interviewId) => {
     await interview.save();
   } catch (error) {
     console.error("Background mock interview evaluation error:", error);
-
-    await MockInterview.findByIdAndUpdate(interviewId, {
-      $set: {
-        evaluationStatus: "failed",
-        "report.summary":
-          "Your interview was submitted, but evaluation failed. Please try again later.",
-      },
-    }).catch((updateError) => {
-      console.error("Could not update evaluation status:", updateError);
-    });
+    throw error;
   }
 };
 
@@ -869,6 +894,10 @@ const completeMockInterview = async (req, res) => {
 
     await interview.save();
 
+    // Persist the evaluation work before responding so a process restart can
+    // resume it from MongoDB.
+    await enqueueInterviewEvaluation(interview._id);
+
     // Send the response before starting evaluation.
     res.status(200).json({
       success: true,
@@ -876,11 +905,6 @@ const completeMockInterview = async (req, res) => {
       interview: sanitizeInterview(interview),
     });
 
-    setImmediate(() => {
-      evaluateSubmittedInterview(interview._id).catch((error) => {
-        console.error("Unexpected evaluation task error:", error);
-      });
-    });
   } catch (error) {
     console.error("Complete mock interview error:", error);
 
@@ -982,4 +1006,5 @@ module.exports = {
   toggleQuestionReview,
   terminateMockInterview,
   completeMockInterview,
+  evaluateSubmittedInterview,
 };

@@ -18,7 +18,7 @@ import {
   Trophy,
 } from "lucide-react";
 
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../context/useAuth";
 
 import {
   getMockInterview,
@@ -106,7 +106,6 @@ const MockInterview = () => {
     try {
       const result = await getMockInterview(
         preparationId,
-        token,
         milestone
       );
 
@@ -205,7 +204,11 @@ const MockInterview = () => {
   }, [preparationId, token, milestone]);
 
   useEffect(() => {
-    loadInterview();
+    const timer = window.setTimeout(() => {
+      loadInterview();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, [loadInterview]);
 
   // Poll the selected milestone while background generation is running.
@@ -225,7 +228,6 @@ const MockInterview = () => {
       try {
         const result = await getMockInterview(
           preparationId,
-          token,
           milestone
         );
 
@@ -299,7 +301,6 @@ const MockInterview = () => {
       try {
         const result = await getMockInterview(
           preparationId,
-          token,
           milestone
         );
 
@@ -431,7 +432,6 @@ const MockInterview = () => {
         terminateMockInterview(
           interview._id,
           "Interview screen became hidden",
-          token
         )
           .then((result) => {
             if (!result.success) {
@@ -502,7 +502,6 @@ const MockInterview = () => {
     try {
       const result = await prepareMockInterviewQuestions(
         preparationId,
-        token,
         milestone
       );
 
@@ -539,7 +538,6 @@ const MockInterview = () => {
       // Check whether the selected milestone's questions are ready.
       const preparationResult = await prepareMockInterviewQuestions(
         preparationId,
-        token,
         milestone
       );
 
@@ -582,7 +580,6 @@ const MockInterview = () => {
 
       const result = await startMockInterview(
         preparationId,
-        token,
         milestone
       );
 
@@ -681,7 +678,6 @@ const MockInterview = () => {
         interview._id,
         currentQuestion._id,
         answer,
-        token
       );
 
       if (!result.success) {
@@ -756,7 +752,6 @@ const MockInterview = () => {
     try {
       const result = await completeMockInterview(
         interview._id,
-        token
       );
 
       if (!result.success) {
@@ -870,9 +865,6 @@ const MockInterview = () => {
 
   const generationFailed =
     questionGenerationStatus === "failed";
-
-  const isGenerating =
-    !questionsReady && !generationFailed;
 
   return (
     <div className="mx-auto w-full max-w-4xl space-y-6 px-4 py-8 md:px-8">
@@ -1386,4 +1378,4 @@ const MockInterview = () => {
   );
 };
 
-export default MockInterview; 
+export default MockInterview;

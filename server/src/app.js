@@ -9,19 +9,18 @@ const preparationPlanRoutes = require("./routes/preparationPlan.routes")
 const interviewPracticeRoutes = require("./routes/interviewPractice.routes");
 const mockInterviewRoutes = require("./routes/mockInterview.routes");
 const profileRoutes = require("./routes/profile.routes");
+const { ALLOWED_ORIGINS } = require("./config/cors.config");
 
 const app = express();
 
 const corsOptions = {
-  origin: [
-    "http://localhost:5173",
-    "https://preppilot-6t8.pages.dev",
-  ],
+  origin: ALLOWED_ORIGINS,
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
 };
 
+app.set("trust proxy", 1);
 app.use(cors(corsOptions));
 
 app.use(express.json());

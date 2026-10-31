@@ -13,6 +13,10 @@ const preparationSchema = new mongoose.Schema(
       ref: "Resume",
       required: true,
     },
+    aiProcessingConsentAt: {
+      type: Date,
+      required: true,
+    },
 
     targetRole: {
       type: String,

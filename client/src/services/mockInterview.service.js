@@ -1,13 +1,13 @@
-const API_URL =
-  "https://preppilot-api-ur97.onrender.com/api/mock-interviews";
+import { API_BASE_URL, apiFetch } from "./api";
 
-const apiRequest = async (endpoint, token, options = {}) => {
+const API_URL = `${API_BASE_URL}/mock-interviews`;
+
+const apiRequest = async (endpoint, options = {}) => {
   try {
-    const response = await fetch(`${API_URL}${endpoint}`, {
+    const response = await apiFetch(`${API_URL}${endpoint}`, {
       ...options,
       headers: {
         ...(options.body ? { "Content-Type": "application/json" } : {}),
-        Authorization: `Bearer ${token}`,
         ...options.headers,
       },
     });
@@ -23,62 +23,53 @@ const apiRequest = async (endpoint, token, options = {}) => {
   }
 };
 
-const milestoneQuery = (milestone = 50) =>
-  `?milestone=${[50, 75, 100].includes(Number(milestone)) ? Number(milestone) : 50}`;
-
 export const getMockInterview = (
   preparationId,
-  token,
   milestone = 50
 ) => {
   return apiRequest(
     `/${preparationId}?milestone=${milestone}`,
-    token
   );
 };
 
 export const prepareMockInterviewQuestions = (
   preparationId,
-  token,
   milestone = 50
 ) =>
   apiRequest(
     `/${preparationId}/questions/prepare?milestone=${milestone}`,
-    token,
     { method: "POST" }
   );
 
 export const startMockInterview = (
   preparationId,
-  token,
   milestone = 50
 ) =>
   apiRequest(
     `/${preparationId}/start?milestone=${milestone}`,
-    token,
     { method: "POST" }
   );
 
-export const saveMockAnswer = (interviewId, questionId, answer, token) =>
-  apiRequest(`/${interviewId}/questions/${questionId}`, token, {
+export const saveMockAnswer = (interviewId, questionId, answer) =>
+  apiRequest(`/${interviewId}/questions/${questionId}`, {
     method: "PATCH",
     body: JSON.stringify({ answer }),
   });
 
-export const markQuestionForReview = (interviewId, questionId, markedForReview, token) =>
-  apiRequest(`/${interviewId}/questions/${questionId}/review`, token, {
+export const markQuestionForReview = (interviewId, questionId, markedForReview) =>
+  apiRequest(`/${interviewId}/questions/${questionId}/review`, {
     method: "PATCH",
     body: JSON.stringify({ markedForReview }),
   });
 
-export const terminateMockInterview = (interviewId, reason, token) =>
-  apiRequest(`/${interviewId}/terminate`, token, {
+export const terminateMockInterview = (interviewId, reason) =>
+  apiRequest(`/${interviewId}/terminate`, {
     method: "POST",
     body: JSON.stringify({ reason }),
   });
 
-export const completeMockInterview = (interviewId, token) =>
-  apiRequest(`/${interviewId}/complete`, token, { method: "POST" });
+export const completeMockInterview = (interviewId) =>
+  apiRequest(`/${interviewId}/complete`, { method: "POST" });
 
-export const getMockInterviewReport = (preparationId, interviewId, token) =>
-  apiRequest(`/${preparationId}/report/${interviewId}`, token);
+export const getMockInterviewReport = (preparationId, interviewId) =>
+  apiRequest(`/${preparationId}/report/${interviewId}`);

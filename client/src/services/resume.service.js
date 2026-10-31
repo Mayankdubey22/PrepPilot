@@ -1,16 +1,13 @@
 
-const API_BASE_URL = "https://preppilot-api-ur97.onrender.com/api";
+import { API_BASE_URL, apiFetch } from "./api";
 
-export const uploadResume = async (file, token) => {
+export const uploadResume = async (file) => {
   try {
     const formData = new FormData();
     formData.append("resume", file);
 
-    const response = await fetch(`${API_BASE_URL}/resumes`, {
+    const response = await apiFetch(`${API_BASE_URL}/resumes`, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
       body: formData,
     });
 
@@ -21,7 +18,7 @@ export const uploadResume = async (file, token) => {
       status: response.status,
       data,
     };
-  } catch (error) {
+  } catch {
     return {
       success: false,
       status: 0,

@@ -14,6 +14,7 @@ const createPreparation = async (req, res) => {
       duration,
       dailyTime,
       resumeId, // Added this
+      aiProcessingConsent,
     } = req.body;
 
     // Validate required preparation details
@@ -50,6 +51,13 @@ const createPreparation = async (req, res) => {
       });
     }
 
+    if (aiProcessingConsent !== true) {
+      return res.status(400).json({
+        success: false,
+        message: "Consent to AI processing of resume data is required.",
+      });
+    }
+
     // Confirm that this resume belongs to the logged-in user
     const resume = await Resume.findOne({
       _id: resumeId,
@@ -77,6 +85,7 @@ const createPreparation = async (req, res) => {
 
       // Added resume reference and metadata
       resumeId: resume._id,
+      aiProcessingConsentAt: new Date(),
       resume: {
         fileName: resume.fileName,
         fileSize: resume.fileSize,

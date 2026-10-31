@@ -1,6 +1,8 @@
 import { useEffect, useState, useRef } from "react";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import AppLayout from "../../layouts/AppLayout";
+import { useAuth } from "../../context/useAuth";
+import { API_BASE_URL, apiFetch } from "../../services/api";
 import {
   UserRound,
   Mail,
@@ -21,10 +23,11 @@ import {
   ChevronRight,
 } from "lucide-react";
 
-const API_URL =
-  "https://preppilot-api-ur97.onrender.com/api/profile";
+const API_URL = `${API_BASE_URL}/profile`;
 
 const Profile = () => {
+  const { token, logout } = useAuth();
+  const navigate = useNavigate();
   const [profile, setProfile] = useState({
     name: "",
     email: "",
@@ -47,6 +50,7 @@ const Profile = () => {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [preparations, setPreparations] = useState([]);
@@ -69,20 +73,12 @@ const Profile = () => {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const token =
-          localStorage.getItem("prepPilot-token") ||
-          localStorage.getItem("token");
-
         if (!token) {
           setError("Please sign in to view your profile.");
           return;
         }
 
-        const response = await fetch(API_URL, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        const response = await apiFetch(API_URL);
 
         const data = await response.json();
 
@@ -109,27 +105,16 @@ const Profile = () => {
     };
 
     fetchProfile();
-  }, []);
+  }, [token]);
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const token =
-          localStorage.getItem("prepPilot-token") ||
-          localStorage.getItem("token");
-
         if (!token) {
           throw new Error("Please sign in again.");
         }
 
-        const response = await fetch(
-          "https://preppilot-api-ur97.onrender.com/api/profile/stats",
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
+        const response = await apiFetch(`${API_URL}/stats`);
 
         const data = await response.json();
 
@@ -148,28 +133,17 @@ const Profile = () => {
     };
 
     fetchStats();
-  }, []);
+  }, [token]);
 
 
   useEffect(() => {
     const fetchPreparations = async () => {
       try {
-        const token =
-          localStorage.getItem("prepPilot-token") ||
-          localStorage.getItem("token");
-
         if (!token) {
           throw new Error("Please sign in again.");
         }
 
-        const response = await fetch(
-          "https://preppilot-api-ur97.onrender.com/api/profile/preparations",
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
+        const response = await apiFetch(`${API_URL}/preparations`);
 
         const data = await response.json();
 
@@ -190,7 +164,7 @@ const Profile = () => {
     };
 
     fetchPreparations();
-  }, []);
+  }, [token]);
 
 
   const handleChange = (event) => {
@@ -232,19 +206,14 @@ const Profile = () => {
     setError("");
 
     try {
-      const token =
-        localStorage.getItem("prepPilot-token") ||
-        localStorage.getItem("token");
-
       if (!token) {
         throw new Error("Please sign in again.");
       }
 
-      const response = await fetch(API_URL, {
+      const response = await apiFetch(API_URL, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           name: profile.name,
@@ -275,6 +244,34 @@ const Profile = () => {
       setError(err.message || "Something went wrong.");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    const confirmed = window.confirm(
+      "Permanently delete your account, resumes, preparations, and interview results? This cannot be undone."
+    );
+
+    if (!confirmed || deletingAccount) return;
+
+    setDeletingAccount(true);
+    setError("");
+
+    try {
+      const response = await apiFetch(API_URL, { method: "DELETE" });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Unable to delete your account.");
+      }
+
+      localStorage.removeItem(imageStorageKey(profile.email));
+      logout();
+      navigate("/", { replace: true });
+    } catch (err) {
+      setError(err.message || "Unable to delete your account.");
+    } finally {
+      setDeletingAccount(false);
     }
   };
 
@@ -858,6 +855,21 @@ const Profile = () => {
     )}
   </div>
 </section>
+
+          <section className="rounded-2xl border border-red-500/20 bg-red-500/[0.04] p-5">
+            <h2 className="font-semibold text-red-200">Delete account and data</h2>
+            <p className="mt-2 text-sm leading-6 text-gray-400">
+              This removes your PrepPilot account, stored resume text, preparations, and interview results. It cannot remove data already processed by external AI services or retained in their backups.
+            </p>
+            <button
+              type="button"
+              onClick={handleDeleteAccount}
+              disabled={deletingAccount}
+              className="mt-4 rounded-xl border border-red-400/30 px-4 py-2.5 text-sm font-semibold text-red-200 transition hover:bg-red-500/10 disabled:opacity-50"
+            >
+              {deletingAccount ? "Deleting account..." : "Delete my account"}
+            </button>
+          </section>
 
           </aside>
         </div>

@@ -11,6 +11,18 @@ const {
   generateInterviewQuestions,
 } = require("../services/interviewPractice.service");
 
+const sanitizePractice = (practice) => {
+  const data = practice.toObject();
+
+  data.questions = data.questions.map((question) => {
+    delete question.correctOption;
+    if (question.type === "MCQ") delete question.expectedPoints;
+    return question;
+  });
+
+  return data;
+};
+
 const getInterviewPractice = async (req, res) => {
   try {
     const { preparationId } = req.params;
@@ -34,7 +46,7 @@ const getInterviewPractice = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      practice,
+      practice: practice ? sanitizePractice(practice) : null,
     });
   } catch (error) {
     if (error.name === "CastError") {
@@ -72,13 +84,75 @@ const createInterviewPractice = async (req, res) => {
     const existingPractice = await InterviewPractice.findOne({
       user: req.userId,
       preparation: preparation._id,
-    });
+    }).select("+questions.correctOption");
 
     if (existingPractice) {
+      const missingMcqChoices = existingPractice.questions.filter(
+        (question) =>
+          question.type === "MCQ" &&
+          (!Array.isArray(question.options) || question.options.length !== 4 ||
+            !Number.isInteger(question.correctOption))
+      ).length;
+
+      if (missingMcqChoices > 0) {
+        const resume = await Resume.findOne({
+          _id: preparation.resumeId,
+          user: req.userId,
+        });
+
+        if (!resume) {
+          return res.status(404).json({
+            success: false,
+            message: "Resume not found for this preparation.",
+          });
+        }
+
+        const generatedQuestions = await generateInterviewQuestions({
+          targetRole: preparation.targetRole,
+          experience: preparation.experience,
+          targetCompany: preparation.targetCompany,
+          jobDescription: preparation.jobDescription,
+          interviewTypes: preparation.interviewTypes,
+          difficulty: preparation.difficulty,
+          resumeText: resume.extractedText,
+        });
+        const generatedMcqs = generatedQuestions.filter(
+          (question) => question.type === "MCQ"
+        );
+        let nextMcqIndex = 0;
+
+        existingPractice.questions = existingPractice.questions.map((question) => {
+          if (
+            question.type !== "MCQ" ||
+            (Array.isArray(question.options) && question.options.length === 4 &&
+              Number.isInteger(question.correctOption))
+          ) {
+            return question;
+          }
+
+          const replacement = generatedMcqs[nextMcqIndex++];
+
+          return {
+            ...replacement,
+            userAnswer: "",
+            answeredAt: null,
+            evaluation: {},
+          };
+        });
+
+        await existingPractice.save();
+
+        return res.status(200).json({
+          success: true,
+          message: "Missing MCQ choices were regenerated. Existing MCQ answers were reset; descriptive answers were kept.",
+          practice: sanitizePractice(existingPractice),
+        });
+      }
+
       return res.status(200).json({
         success: true,
         message: "Interview practice already exists.",
-        practice: existingPractice,
+        practice: sanitizePractice(existingPractice),
       });
     }
 
@@ -114,7 +188,7 @@ const createInterviewPractice = async (req, res) => {
     return res.status(201).json({
       success: true,
       message: "Interview questions generated successfully.",
-      practice,
+      practice: sanitizePractice(practice),
     });
   } catch (error) {
     if (error.name === "CastError") {
@@ -174,6 +248,27 @@ const saveInterviewAnswer = async (req, res) => {
       });
     }
 
+    if (
+      question.type === "MCQ" &&
+      (!Array.isArray(question.options) || question.options.length !== 4)
+    ) {
+      return res.status(409).json({
+        success: false,
+        message: "This MCQ is missing its answer choices. Regenerate the interview practice questions.",
+      });
+    }
+
+    if (
+      question.type === "MCQ" &&
+      userAnswer.trim() &&
+      !["0", "1", "2", "3"].includes(userAnswer.trim())
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Select one of the available answer choices.",
+      });
+    }
+
     question.userAnswer = userAnswer;
     question.answeredAt = userAnswer.trim() ? new Date() : null;
 
@@ -217,7 +312,7 @@ const evaluateAnswer = async (req, res) => {
     const practice = await InterviewPractice.findOne({
       user: req.userId,
       preparation: preparationId,
-    });
+    }).select("+questions.correctOption");
 
     if (!practice) {
       return res.status(404).json({
@@ -232,6 +327,17 @@ const evaluateAnswer = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: "Interview question not found.",
+      });
+    }
+
+    if (
+      question.type === "MCQ" &&
+      (!Array.isArray(question.options) || question.options.length !== 4 ||
+        !Number.isInteger(question.correctOption))
+    ) {
+      return res.status(409).json({
+        success: false,
+        message: "This MCQ is missing its answer choices. Regenerate the interview practice questions.",
       });
     }
 
@@ -254,13 +360,34 @@ const evaluateAnswer = async (req, res) => {
       });
     }
 
-    const evaluation = await evaluateInterviewAnswer({
-      question: question.question,
-      topic: question.topic,
-      expectedPoints: question.expectedPoints,
-      userAnswer: question.userAnswer,
-      targetRole: preparation.targetRole,
-    });
+    let evaluation;
+
+    if (question.type === "MCQ") {
+      const selectedOption = Number(question.userAnswer);
+      const isCorrect = selectedOption === question.correctOption;
+      const correctAnswer = question.options[question.correctOption];
+
+      evaluation = {
+        score: isCorrect ? 100 : 0,
+        feedback: isCorrect
+          ? "Correct answer."
+          : `Incorrect. The correct answer is ${correctAnswer}.`,
+        suggestedAnswer: correctAnswer,
+        strengths: isCorrect ? ["Selected the correct option."] : [],
+        improvements: isCorrect
+          ? []
+          : [question.expectedPoints?.[0] || "Review this topic and the correct answer."],
+        evaluatedAt: new Date(),
+      };
+    } else {
+      evaluation = await evaluateInterviewAnswer({
+        question: question.question,
+        topic: question.topic,
+        expectedPoints: question.expectedPoints,
+        userAnswer: question.userAnswer,
+        targetRole: preparation.targetRole,
+      });
+    }
 
     question.evaluation = evaluation;
     await practice.save();

@@ -12,16 +12,14 @@ import {
 } from "lucide-react";
 
 import AppLayout from "../../layouts/AppLayout";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../context/useAuth";
+import { API_BASE_URL, apiFetch } from "../../services/api";
 
-const API_URL =
-  "https://preppilot-api-ur97.onrender.com/api/mock-interviews";
+const API_URL = `${API_BASE_URL}/mock-interviews`;
 
-const apiRequest = async (endpoint, token) => {
+const apiRequest = async (endpoint) => {
   try {
-    const response = await fetch(`${API_URL}${endpoint}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const response = await apiFetch(`${API_URL}${endpoint}`);
     const data = await response.json().catch(() => ({}));
     return { success: response.ok, status: response.status, data };
   } catch {
@@ -77,8 +75,7 @@ const MockInterviewReport = () => {
     setError("");
 
     const result = await apiRequest(
-      `/${preparationId}/report/${interviewId}`,
-      token
+      `/${preparationId}/report/${interviewId}`
     );
 
     if (!result.success) {
@@ -96,7 +93,11 @@ const MockInterviewReport = () => {
   }, [preparationId, interviewId, token]);
 
   useEffect(() => {
-    loadReport();
+    const timer = window.setTimeout(() => {
+      loadReport();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, [loadReport]);
 
   const questions = interview?.questions || [];

@@ -20,7 +20,7 @@ import { Link, useLocation, useNavigate, useParams } from "react-router";
 import AppLayout from "../../layouts/AppLayout";
 import Card from "../../components/ui/Card";
 import Button from "../../components/ui/Button";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../context/useAuth";
 import { getMockInterview } from "../../services/mockInterview.service";
 import {
   getMyPreparations,
@@ -44,7 +44,6 @@ const Preparation = () => {
   const [expandedDays, setExpandedDays] = useState([1]);
   const [updatingTaskId, setUpdatingTaskId] = useState(null);
   const [mockInterviewData, setMockInterviewData] = useState(null);
-  const [isCheckingEvaluation, setIsCheckingEvaluation] = useState(false);
   const [showResultPopup, setShowResultPopup] = useState(false);
   const [resultPopupMessage, setResultPopupMessage] = useState("");
   const [resultInterviewId, setResultInterviewId] = useState("");
@@ -62,7 +61,7 @@ const Preparation = () => {
     setPreparation(null);
 
     try {
-      const result = await getMyPreparations(token);
+      const result = await getMyPreparations();
 
       if (!result.success) {
         setError(
@@ -88,7 +87,6 @@ const Preparation = () => {
 
       const planResult = await getPreparationPlan(
         currentPreparation._id,
-        token
       );
 
       if (planResult.success) {
@@ -102,7 +100,6 @@ const Preparation = () => {
 
       const mockResult = await getMockInterview(
         currentPreparation._id,
-        token
       );
 
       if (mockResult.success) {
@@ -116,7 +113,11 @@ const Preparation = () => {
   }, [token, preparationId]);
 
   useEffect(() => {
-    loadPreparation();
+    const timer = window.setTimeout(() => {
+      loadPreparation();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, [loadPreparation]);
 
   useEffect(() => {
@@ -135,14 +136,8 @@ const Preparation = () => {
     let cancelled = false;
     let timer;
 
-    setIsCheckingEvaluation(true);
-    setResultInterviewId(interviewId);
-    setResultPopupMessage(
-      "Your answers were submitted. PrepPilot is evaluating them in the background."
-    );
-
     const checkEvaluation = async () => {
-      const result = await getMockInterview(preparation._id, token);
+      const result = await getMockInterview(preparation._id);
 
       if (cancelled) return;
 
@@ -162,8 +157,6 @@ const Preparation = () => {
             submittedInterview.evaluationStatus
           )
         ) {
-          setIsCheckingEvaluation(false);
-
           setResultPopupMessage(
             submittedInterview.evaluationStatus === "failed"
               ? "Your interview was submitted, but evaluation failed. You can open the report for details."
@@ -179,7 +172,13 @@ const Preparation = () => {
       timer = setTimeout(checkEvaluation, 3000);
     };
 
-    checkEvaluation();
+    timer = window.setTimeout(() => {
+      setResultInterviewId(interviewId);
+      setResultPopupMessage(
+        "Your answers were submitted. PrepPilot is evaluating them in the background."
+      );
+      checkEvaluation();
+    }, 0);
 
     return () => {
       cancelled = true;
@@ -201,7 +200,6 @@ const Preparation = () => {
     try {
       const result = await generatePreparationPlan(
         preparation._id,
-        token
       );
 
       if (!result.success) {
@@ -237,7 +235,6 @@ const Preparation = () => {
         dayId,
         taskId,
         isCompleted,
-        token
       );
 
       if (!result.success) {

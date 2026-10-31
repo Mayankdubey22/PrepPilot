@@ -5,7 +5,10 @@
   "main": "index.js",
   "scripts": {
     "start": "node src/server.js",
-    "dev": "nodemon src/server.js"
+    "dev": "nodemon src/server.js",
+    "diagnose:gemini": "node src/diagnose-gemini.js",
+    "diagnose:plan": "node src/diagnose-plan.js",
+    "test": "node --test src/middleware/auth.middleware.test.js src/middleware/rateLimit.middleware.test.js"
   },
   "keywords": [],
   "author": "",

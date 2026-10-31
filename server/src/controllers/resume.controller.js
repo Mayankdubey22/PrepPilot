@@ -37,7 +37,6 @@ const uploadResume = async (req, res) => {
         id: resume._id,
         fileName: resume.fileName,
         fileSize: resume.fileSize,
-        extractedText: resume.extractedText,
         createdAt: resume.createdAt,
       },
     });

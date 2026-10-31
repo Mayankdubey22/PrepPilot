@@ -16,7 +16,7 @@ import AppLayout from "../../layouts/AppLayout";
 import Card from "../../components/ui/Card";
 import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../context/useAuth";
 import { createPreparation } from "../../services/preparation.service";
 
 const initialForm = {
@@ -38,6 +38,7 @@ const StartPreparation = () => {
   const [formData, setFormData] = useState(initialForm);
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [aiProcessingConsent, setAiProcessingConsent] = useState(false);
 
   // --------------------------------
   // Handle normal input changes
@@ -165,6 +166,11 @@ const StartPreparation = () => {
         "Please upload your resume.";
     }
 
+    if (!aiProcessingConsent) {
+      newErrors.aiProcessingConsent =
+        "Please confirm that you agree to AI processing of your resume.";
+    }
+
     return newErrors;
   };
 
@@ -196,7 +202,6 @@ const StartPreparation = () => {
       // Step 1: Upload the resume and extract its text.
       const resumeResult = await uploadResume(
         formData.resume,
-        token
       );
 
       if (!resumeResult.success) {
@@ -219,11 +224,11 @@ const StartPreparation = () => {
         duration: formData.duration,
         dailyTime: formData.dailyTime,
         resumeId: resumeResult.data.resume.id,
+        aiProcessingConsent: aiProcessingConsent,
       };
 
       const preparationResult = await createPreparation(
         preparationData,
-        token
       );
 
       if (!preparationResult.success) {
@@ -237,7 +242,7 @@ const StartPreparation = () => {
 
       // Both API requests succeeded.
       navigate("/preparation");
-    } catch (error) {
+    } catch {
       setErrors({
         submit: "Something went wrong. Please try again.",
       });
@@ -662,6 +667,30 @@ const StartPreparation = () => {
               {errors.submit}
             </div>
           )}
+
+          <label className="mb-5 flex items-start gap-3 text-sm leading-6 text-[var(--muted)]">
+            <input
+              type="checkbox"
+              checked={aiProcessingConsent}
+              onChange={(event) => {
+                setAiProcessingConsent(event.target.checked);
+                setErrors((current) => ({
+                  ...current,
+                  aiProcessingConsent: "",
+                }));
+              }}
+              disabled={isSubmitting}
+              className="mt-1 accent-indigo-600"
+            />
+            <span>
+              I agree that my resume text and preparation details may be sent to Google Gemini to generate interview preparation content. PrepPilot stores my resume text until I delete my account.
+              {errors.aiProcessingConsent && (
+                <span className="mt-1 block text-xs text-red-500" role="alert">
+                  {errors.aiProcessingConsent}
+                </span>
+              )}
+            </span>
+          </label>
 
           <div className="flex items-center justify-between">
             <p className="text-sm text-[var(--muted)]">

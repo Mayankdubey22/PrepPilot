@@ -1,5 +1,23 @@
 
+const mongoose = require("mongoose");
 const User = require("../models/user.model");
+const Resume = require("../models/resume.model");
+const Preparation = require("../models/preparation.model");
+const PreparationPlan = require("../models/preparationPlan.model");
+const InterviewPractice = require("../models/interviewPractice.model");
+const MockInterview = require("../models/mockInterview.model");
+const MockInterviewQuestionSet = require("../models/mockInterviewQuestionSet.model");
+const InterviewEvaluationJob = require("../models/interviewEvaluationJob.model");
+const { SESSION_COOKIE } = require("../middleware/auth.middleware");
+
+const clearSessionCookie = (req, res) => {
+  res.clearCookie(SESSION_COOKIE, {
+    httpOnly: true,
+    secure: req.secure || process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+  });
+};
 
 const getProfile = async (req, res) => {
   try {
@@ -109,11 +127,6 @@ const updateProfile = async (req, res) => {
   }
 };
 
-
-const Preparation = require("../models/preparation.model");
-const PreparationPlan = require("../models/preparationPlan.model");
-const MockInterview = require("../models/mockInterview.model");
-
 const getProfileStats = async (req, res) => {
   try {
     const userId = req.user.userId;
@@ -209,6 +222,49 @@ const getProfilePreparations = async (req, res) => {
   }
 };
 
+const deleteAccount = async (req, res) => {
+  let session;
+
+  try {
+    session = await mongoose.startSession();
+    const userId = req.userId;
+    await session.withTransaction(async () => {
+      const interviews = await MockInterview.find({ user: userId })
+        .select("_id")
+        .session(session)
+        .lean();
+      const interviewIds = interviews.map((item) => item._id);
+
+      await InterviewEvaluationJob.deleteMany(
+        { interview: { $in: interviewIds } },
+        { session }
+      );
+      await MockInterviewQuestionSet.deleteMany({ user: userId }, { session });
+      await MockInterview.deleteMany({ user: userId }, { session });
+      await InterviewPractice.deleteMany({ user: userId }, { session });
+      await PreparationPlan.deleteMany({ user: userId }, { session });
+      await Preparation.deleteMany({ user: userId }, { session });
+      await Resume.deleteMany({ user: userId }, { session });
+      await User.deleteOne({ _id: userId }, { session });
+    });
+
+    clearSessionCookie(req, res);
+
+    return res.status(200).json({
+      success: true,
+      message: "Your account and associated preparation data were deleted.",
+    });
+  } catch (error) {
+    console.error("Delete account error:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Unable to delete the account. Please try again.",
+    });
+  } finally {
+    if (session) await session.endSession();
+  }
+};
+
 
 
 module.exports = {
@@ -216,5 +272,6 @@ module.exports = {
   updateProfile,
   getProfileStats,
   getProfilePreparations,
+  deleteAccount,
 };
 

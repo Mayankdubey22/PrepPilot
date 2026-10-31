@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router";
 import {
-  BarChart3,
   BookOpen,
   History,
   LayoutDashboard,
@@ -11,7 +10,7 @@ import {
 } from "lucide-react";
 
 import ThemeToggle from "../components/common/ThemeToggle";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/useAuth";
 
 const navigation = [
   {

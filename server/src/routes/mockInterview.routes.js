@@ -13,6 +13,7 @@ const {
 } = require("../controllers/mockInterview.controller");
 
 const protect = require("../middleware/auth.middleware");
+const { createRateLimiter, userIdentity } = require("../middleware/rateLimit.middleware");
 
 const router = express.Router();
 
@@ -22,6 +23,12 @@ router.get("/:preparationId", getMockInterview);
 
 router.post(
   "/:preparationId/questions/prepare",
+  createRateLimiter({
+    scope: "mock-question-generation",
+    limit: 6,
+    windowMs: 60 * 60 * 1000,
+    identity: userIdentity,
+  }),
   prepareMockInterviewQuestions
 );
 

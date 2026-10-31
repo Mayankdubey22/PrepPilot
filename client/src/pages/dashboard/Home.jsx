@@ -6,7 +6,6 @@ import {
   Brain,
   CalendarDays,
   CheckCircle2,
-  Clock3,
   FileText,
   LoaderCircle,
   MessageSquare,
@@ -18,7 +17,7 @@ import { Link } from "react-router";
 import AppLayout from "../../layouts/AppLayout";
 import Card from "../../components/ui/Card";
 import Button from "../../components/ui/Button";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../context/useAuth";
 import {
   getMyPreparations,
   getPreparationPlan,
@@ -54,7 +53,7 @@ const loadDashboard = useCallback(async () => {
   setMockInterviewError("");
 
   try {
-    const preparationResult = await getMyPreparations(token);
+    const preparationResult = await getMyPreparations();
 
     if (!preparationResult.success) {
       setError(
@@ -81,7 +80,6 @@ const loadDashboard = useCallback(async () => {
       try {
         const mockResult = await getMockInterview(
           currentPreparation._id,
-          token
         );
 
         if (mockResult.success) {
@@ -102,7 +100,6 @@ const loadDashboard = useCallback(async () => {
       try {
         const planResult = await getPreparationPlan(
           currentPreparation._id,
-          token
         );
 
         if (planResult.success) {
@@ -121,7 +118,7 @@ const loadDashboard = useCallback(async () => {
     // Practice statistics should not prevent the main dashboard
     // from displaying an empty state or an existing preparation.
     try {
-      const statsResult = await getInterviewPracticeStats(token);
+      const statsResult = await getInterviewPracticeStats();
 
       if (statsResult.success) {
         setPracticeStats(statsResult.data?.stats || null);
@@ -149,7 +146,11 @@ const loadDashboard = useCallback(async () => {
 
 
   useEffect(() => {
-    loadDashboard();
+    const timer = window.setTimeout(() => {
+      loadDashboard();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, [loadDashboard]);
 
   const allTasks = (plan?.days || []).flatMap(

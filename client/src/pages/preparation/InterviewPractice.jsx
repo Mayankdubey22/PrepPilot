@@ -10,7 +10,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../context/useAuth";
 import {
   getInterviewPractice,
   generateInterviewPractice,
@@ -44,7 +44,7 @@ function InterviewPractice() {
     setError("");
 
     try {
-      const result = await getInterviewPractice(preparationId, token);
+      const result = await getInterviewPractice(preparationId);
 
       if (!result.success) {
         setError(
@@ -77,7 +77,6 @@ function InterviewPractice() {
     try {
       const result = await generateInterviewPractice(
         preparationId,
-        token
       );
 
       if (!result.success) {
@@ -87,11 +86,24 @@ function InterviewPractice() {
         return;
       }
 
-      setPractice(result.data.practice || null);
+      const updatedPractice = result.data.practice || null;
+      setPractice(updatedPractice);
       setDraftAnswers({});
       setSaveMessages({});
       setEvaluationErrors({});
       setExpandedQuestion(null);
+
+      const repairStillNeeded = updatedPractice?.questions?.some(
+        (question) =>
+          question.type === "MCQ" &&
+          (!Array.isArray(question.options) || question.options.length !== 4)
+      );
+
+      if (repairStillNeeded) {
+        setError(
+          "The API returned the old MCQ data without choices. Deploy or restart the updated server, then try Repair MCQ Choices again."
+        );
+      }
     } catch (err) {
       setError(err.message || "Unable to connect to the server.");
     } finally {
@@ -159,7 +171,6 @@ function InterviewPractice() {
         preparationId,
         questionId,
         userAnswer,
-        token
       );
 
       if (!result.success) {
@@ -258,7 +269,6 @@ function InterviewPractice() {
           preparationId,
           questionId,
           currentAnswer,
-          token
         );
 
         if (!saveResult.success) {
@@ -298,7 +308,6 @@ function InterviewPractice() {
       const result = await evaluateInterviewAnswer(
         preparationId,
         questionId,
-        token
       );
 
       if (!result.success) {
@@ -352,6 +361,11 @@ function InterviewPractice() {
   }
 
   const questions = practice?.questions || [];
+  const hasMcqWithoutOptions = questions.some(
+    (question) =>
+      question.type === "MCQ" &&
+      (!Array.isArray(question.options) || question.options.length !== 4)
+  );
 
   return (
     <div className="mx-auto w-full max-w-5xl space-y-6 px-4 py-8 md:px-8">
@@ -391,7 +405,11 @@ function InterviewPractice() {
             ) : (
               <RefreshCw size={18} />
             )}
-            {isGenerating ? "Generating..." : "Load or Generate"}
+            {isGenerating
+              ? "Generating..."
+              : hasMcqWithoutOptions
+                ? "Repair MCQ Choices"
+                : "Load or Generate"}
           </button>
         </div>
 
@@ -401,6 +419,15 @@ function InterviewPractice() {
             role="alert"
           >
             {error}
+          </div>
+        )}
+
+        {hasMcqWithoutOptions && (
+          <div
+            className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200"
+            role="status"
+          >
+            Some saved MCQs are missing their choices. Select “Repair MCQ Choices” to regenerate them. Existing MCQ answers will reset; descriptive answers will be kept.
           </div>
         )}
 
@@ -523,7 +550,7 @@ function InterviewPractice() {
 
                 {isExpanded && (
                   <div className="space-y-5 border-t border-gray-200 p-5 dark:border-gray-800">
-                    {question.expectedPoints?.length > 0 && (
+                    {question.type === "Descriptive" && question.expectedPoints?.length > 0 && (
                       <div>
                         <h3 className="font-semibold text-gray-900 dark:text-white">
                           Key points to consider
@@ -537,27 +564,61 @@ function InterviewPractice() {
                     )}
 
                     <div>
-                      <label
-                        htmlFor={`answer-${questionId}`}
-                        className="font-semibold text-gray-900 dark:text-white"
-                      >
+                      <p className="font-semibold text-gray-900 dark:text-white">
                         Your answer
-                      </label>
+                      </p>
 
-                      <textarea
-                        id={`answer-${questionId}`}
-                        value={
-                          draftAnswers[questionId] ??
-                          question.userAnswer ??
-                          ""
-                        }
-                        onChange={(event) =>
-                          handleAnswerChange(questionId, event.target.value)
-                        }
-                        rows={5}
-                        placeholder="Write your answer here..."
-                        className="mt-2 w-full rounded-xl border border-gray-300 bg-white p-4 text-sm text-gray-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 dark:border-gray-700 dark:bg-gray-950 dark:text-white dark:focus:ring-indigo-950"
-                      />
+                      {question.type === "MCQ" ? (
+                        <fieldset className="mt-3 space-y-3">
+                          {(question.options || []).map((option, optionIndex) => {
+                            const selectedAnswer =
+                              draftAnswers[questionId] ?? question.userAnswer ?? "";
+
+                            return (
+                              <label
+                                key={`${questionId}-option-${optionIndex}`}
+                                className="flex cursor-pointer items-start gap-3 rounded-xl border border-gray-200 bg-white p-4 text-sm text-gray-700 transition hover:border-indigo-400 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-200"
+                              >
+                                <input
+                                  type="radio"
+                                  name={`answer-${questionId}`}
+                                  value={String(optionIndex)}
+                                  checked={selectedAnswer === String(optionIndex)}
+                                  onChange={(event) =>
+                                    handleAnswerChange(questionId, event.target.value)
+                                  }
+                                  disabled={
+                                    savingQuestionId !== null ||
+                                    evaluatingQuestionId !== null
+                                  }
+                                  className="mt-0.5 accent-indigo-600"
+                                />
+                                <span>
+                                  <span className="mr-2 font-semibold text-indigo-600 dark:text-indigo-400">
+                                    {String.fromCharCode(65 + optionIndex)}.
+                                  </span>
+                                  {option}
+                                </span>
+                              </label>
+                            );
+                          })}
+                        </fieldset>
+                      ) : (
+                        <textarea
+                          id={`answer-${questionId}`}
+                          value={
+                            draftAnswers[questionId] ??
+                            question.userAnswer ??
+                            ""
+                          }
+                          onChange={(event) =>
+                            handleAnswerChange(questionId, event.target.value)
+                          }
+                          rows={5}
+                          placeholder="Write your answer here..."
+                          className="mt-2 w-full rounded-xl border border-gray-300 bg-white p-4 text-sm text-gray-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 dark:border-gray-700 dark:bg-gray-950 dark:text-white dark:focus:ring-indigo-950"
+                        />
+                      )}
 
                       <div className="mt-3 flex flex-wrap items-center gap-3">
                         <button

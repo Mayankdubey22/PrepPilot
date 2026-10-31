@@ -23,6 +23,16 @@ const interviewQuestionSchema = new mongoose.Schema(
             enum: ["Easy", "Medium", "Hard"],
             default: "Medium",
         },
+        options: {
+            type: [String],
+            default: [],
+        },
+        correctOption: {
+            type: Number,
+            min: 0,
+            max: 3,
+            select: false,
+        },
         expectedPoints: {
             type: [String],
             default: [],

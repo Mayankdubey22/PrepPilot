@@ -6,7 +6,7 @@ import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
 import PasswordInput from "../../components/ui/PasswordInput";
 import { signinUser } from "../../services/auth.service";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../context/useAuth";
 
 const initialForm = {
   email: "",
@@ -80,7 +80,6 @@ const SignIn = () => {
     }
 
     login({
-      token: result.data.token,
       user: result.data.user,
     });
 

@@ -45,6 +45,9 @@ const mockInterviewSchema = new mongoose.Schema(
       default: 50,
       index: true,
     },
+    // Stable key used by a partial unique index to prevent concurrent starts
+    // from creating more than one attempt for a preparation milestone.
+    attemptKey: { type: String, select: false },
     questions: { type: [mockInterviewQuestionSchema], default: [] },
     status: {
       type: String,
@@ -78,5 +81,12 @@ const mockInterviewSchema = new mongoose.Schema(
 
 mockInterviewSchema.index({ user: 1, preparation: 1, createdAt: -1 });
 mockInterviewSchema.index({ user: 1, preparation: 1, milestone: 1, createdAt: -1 });
+mockInterviewSchema.index(
+  { attemptKey: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { attemptKey: { $type: "string" } },
+  }
+);
 
 module.exports = mongoose.model("MockInterview", mockInterviewSchema);

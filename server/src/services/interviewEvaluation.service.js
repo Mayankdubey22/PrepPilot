@@ -1,7 +1,7 @@
 
 const { GoogleGenAI } = require("@google/genai");
 
-const MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+const MODEL = process.env.GEMINI_MODEL || "gemini-3.8-flash";
 
 if (!process.env.GEMINI_API_KEY) {
   throw new Error("GEMINI_API_KEY is not configured.");
@@ -71,7 +71,6 @@ Return ONLY valid JSON in exactly this format:
       model: MODEL,
       contents: prompt,
       config: {
-        temperature: 0.2,
         maxOutputTokens: 1200,
         responseMimeType: "application/json",
       },

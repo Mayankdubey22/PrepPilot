@@ -1,16 +1,13 @@
 
-const API_BASE_URL =
-  import.meta.env.VITE_API_URL ||
-  "http://localhost:5000/api";
+import { API_BASE_URL, apiFetch } from "./api";
 
 // Create a new preparation
-export const createPreparation = async (preparationData, token) => {
+export const createPreparation = async (preparationData) => {
   try {
-    const response = await fetch(`${API_BASE_URL}/preparations`, {
+    const response = await apiFetch(`${API_BASE_URL}/preparations`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify(preparationData),
     });
@@ -22,7 +19,7 @@ export const createPreparation = async (preparationData, token) => {
       status: response.status,
       data,
     };
-  } catch (error) {
+  } catch {
     return {
       success: false,
       status: 0,
@@ -32,13 +29,10 @@ export const createPreparation = async (preparationData, token) => {
 };
 
 // Get all preparations belonging to the logged-in user
-export const getMyPreparations = async (token) => {
+export const getMyPreparations = async () => {
   try {
-    const response = await fetch(`${API_BASE_URL}/preparations`, {
+    const response = await apiFetch(`${API_BASE_URL}/preparations`, {
       method: "GET",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
     });
 
     const data = await response.json();
@@ -48,7 +42,7 @@ export const getMyPreparations = async (token) => {
       status: response.status,
       data,
     };
-  } catch (error) {
+  } catch {
     return {
       success: false,
       status: 0,
@@ -59,17 +53,13 @@ export const getMyPreparations = async (token) => {
 
 // Generate a personalized AI preparation plan
 export const generatePreparationPlan = async (
-  preparationId,
-  token
+  preparationId
 ) => {
   try {
-    const response = await fetch(
+    const response = await apiFetch(
       `${API_BASE_URL}/preparation-plans/${preparationId}/generate`,
       {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
       }
     );
 
@@ -80,7 +70,7 @@ export const generatePreparationPlan = async (
       status: response.status,
       data,
     };
-  } catch (error) {
+  } catch {
     return {
       success: false,
       status: 0,
@@ -93,17 +83,13 @@ export const generatePreparationPlan = async (
 
 // Get an already saved AI preparation plan
 export const getPreparationPlan = async (
-  preparationId,
-  token
+  preparationId
 ) => {
   try {
-    const response = await fetch(
+    const response = await apiFetch(
       `${API_BASE_URL}/preparation-plans/${preparationId}`,
       {
         method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
       }
     );
 
@@ -114,7 +100,7 @@ export const getPreparationPlan = async (
       status: response.status,
       data,
     };
-  } catch (error) {
+  } catch {
     return {
       success: false,
       status: 0,
@@ -130,17 +116,15 @@ export const updatePreparationTask = async (
   preparationId,
   dayId,
   taskId,
-  isCompleted,
-  token
+  isCompleted
 ) => {
   try {
-    const response = await fetch(
+    const response = await apiFetch(
       `${API_BASE_URL}/preparation-plans/${preparationId}/days/${dayId}/tasks/${taskId}`,
       {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ isCompleted }),
       }
@@ -153,7 +137,7 @@ export const updatePreparationTask = async (
       status: response.status,
       data,
     };
-  } catch (error) {
+  } catch {
     return {
       success: false,
       status: 0,

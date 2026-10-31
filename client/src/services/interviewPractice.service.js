@@ -1,15 +1,12 @@
 
-const API_BASE_URL = "https://preppilot-api-ur97.onrender.com/api";
+import { API_BASE_URL, apiFetch } from "./api";
 
-export const getInterviewPractice = async (preparationId, token) => {
+export const getInterviewPractice = async (preparationId) => {
   try {
-    const response = await fetch(
+    const response = await apiFetch(
       `${API_BASE_URL}/interview-practice/${preparationId}`,
       {
         method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
       }
     );
 
@@ -20,7 +17,7 @@ export const getInterviewPractice = async (preparationId, token) => {
       status: response.status,
       data,
     };
-  } catch (error) {
+  } catch {
     return {
       success: false,
       status: 0,
@@ -30,17 +27,13 @@ export const getInterviewPractice = async (preparationId, token) => {
 };
 
 export const generateInterviewPractice = async (
-  preparationId,
-  token
+  preparationId
 ) => {
   try {
-    const response = await fetch(
+    const response = await apiFetch(
       `${API_BASE_URL}/interview-practice/${preparationId}/generate`,
       {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
       }
     );
 
@@ -51,7 +44,7 @@ export const generateInterviewPractice = async (
       status: response.status,
       data,
     };
-  } catch (error) {
+  } catch {
     return {
       success: false,
       status: 0,
@@ -64,17 +57,15 @@ export const generateInterviewPractice = async (
 export const saveInterviewAnswer = async (
   preparationId,
   questionId,
-  userAnswer,
-  token
+  userAnswer
 ) => {
   try {
-    const response = await fetch(
+    const response = await apiFetch(
       `${API_BASE_URL}/interview-practice/${preparationId}/questions/${questionId}`,
       {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ userAnswer }),
       }
@@ -99,17 +90,13 @@ export const saveInterviewAnswer = async (
 
 export const evaluateInterviewAnswer = async (
   preparationId,
-  questionId,
-  token
+  questionId
 ) => {
   try {
-    const response = await fetch(
+    const response = await apiFetch(
       `${API_BASE_URL}/interview-practice/${preparationId}/questions/${questionId}/evaluate`,
       {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
       }
     );
 
@@ -132,15 +119,12 @@ export const evaluateInterviewAnswer = async (
 };
 
 
-export const getInterviewPracticeStats = async (token) => {
+export const getInterviewPracticeStats = async () => {
   try {
-    const response = await fetch(
+    const response = await apiFetch(
       `${API_BASE_URL}/interview-practice/stats`,
       {
         method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
       }
     );
 

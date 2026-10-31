@@ -11,6 +11,7 @@ const {
 } = require("../controllers/preparationTask.controller");
 
 const protect = require("../middleware/auth.middleware");
+const { createRateLimiter, userIdentity } = require("../middleware/rateLimit.middleware");
 
 const router = express.Router();
 
@@ -18,6 +19,12 @@ const router = express.Router();
 router.post(
   "/:preparationId/generate",
   protect,
+  createRateLimiter({
+    scope: "plan-generation",
+    limit: 3,
+    windowMs: 60 * 60 * 1000,
+    identity: userIdentity,
+  }),
   generateMyPreparationPlan
 );
 

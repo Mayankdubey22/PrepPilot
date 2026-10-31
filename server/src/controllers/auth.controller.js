@@ -2,6 +2,15 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("../models/user.model");
+const { SESSION_COOKIE } = require("../middleware/auth.middleware");
+
+const sessionCookieOptions = (req) => ({
+  httpOnly: true,
+  secure: req.secure || process.env.NODE_ENV === "production",
+  sameSite: "lax",
+  path: "/",
+  maxAge: 7 * 24 * 60 * 60 * 1000,
+});
 
 const normalizeEmail = (email) => email.trim().toLowerCase();
 
@@ -189,10 +198,11 @@ const signin = async (req, res) => {
       }
     );
 
+    res.cookie(SESSION_COOKIE, token, sessionCookieOptions(req));
+
     return res.status(200).json({
       success: true,
       message: "Signed in successfully.",
-      token,
       user: {
         id: user._id,
         name: user.name,
@@ -209,7 +219,40 @@ const signin = async (req, res) => {
   }
 };
 
+const getCurrentUser = async (req, res) => {
+  try {
+    const user = await User.findById(req.userId).select("name email");
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: "Session user no longer exists.",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      user: { id: user._id, name: user.name, email: user.email },
+    });
+  } catch (error) {
+    console.error("Current user lookup error:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Unable to verify your session.",
+    });
+  }
+};
+
+const signout = (req, res) => {
+  const options = sessionCookieOptions(req);
+  delete options.maxAge;
+  res.clearCookie(SESSION_COOKIE, options);
+  return res.status(200).json({ success: true, message: "Signed out." });
+};
+
 module.exports = {
   signup,
   signin,
+  getCurrentUser,
+  signout,
 };
